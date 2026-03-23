@@ -20,7 +20,6 @@ jobs:
           fetch-depth: 0
 
       - name: Get diff
-        id: diff
         run: |
           git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }} > diff.txt
 
@@ -30,6 +29,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
           DIFF=$(cat diff.txt)
           RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
@@ -39,11 +39,26 @@ jobs:
               \"model\": \"gpt-4o-mini\",
               \"messages\": [{
                 \"role\": \"system\",
-                \"content\": \"Ты senior Go разработчик с 10+ лет опыта. Делай строгий code review этого diff.\n\nОбязательно проверь:\n- Утечки памяти и горутин\n- Необработанные ошибки\n- Гонки данных (race conditions)\n- Нарушения SOLID\n- Неправильное использование контекста\n- SQL инъекции\n- Отсутствие валидации входных данных\n- Неэффективные запросы к БД (N+1)\n- Копирование вместо указателей и наоборот\n\nКак писать комментарии:\n- Пиши как живой человек, не робот — без канцелярщины и сухих формулировок\n- Не давай готовое решение — наводи на мысль вопросами и подсказками\n- Например вместо 'замени X на Y' спроси 'а что произойдёт если здесь придёт nil?'\n- Можешь использовать юмор если уместно\n- Будь прямым но не грубым\n- Если что-то сделано хорошо — скажи об этом честно\n\nФормат ответа:\n🔴 Критично — баги и уязвимости которые сломают прод\n🟡 Важно — архитектурные проблемы\n🟢 Совет — улучшения и best practices\n\nДля каждой проблемы:\n1. Укажи конкретную строку\n2. Задай наводящий вопрос или дай подсказку — но не готовый код\n3. Намекни в какую сторону думать\n\nЕсли проблем нет — напиши конкретно что сделано хорошо и почему.\"
+                \"content\": \"Ты senior Go разработчик. Делаешь code review как в реальной команде.\n\nПравила:\n- На ТЫ, коротко и по делу без воды\n- Не давай готовый код — наводи на мысль\n- Только важные замечания, мелочи игнорируй\n- Без смайликов и эмодзи\n- Пиши как в корпоративном Jira комментарии\n- Максимум 3-4 замечания\n\nОтвечай ТОЛЬКО валидным JSON без markdown и пояснений:\n{\n  \\\"comments\\\": [\n    {\n      \\\"path\\\": \\\"путь/к/файлу.go\\\",\n      \\\"line\\\": 42,\n      \\\"body\\\": \\\"твой комментарий\\\"\n    }\n  ]\n}\"
               },{
                 \"role\": \"user\",
                 \"content\": $(echo "$DIFF" | jq -Rs .)
               }]
             }")
-          COMMENT=$(echo $RESPONSE | jq -r '.choices[0].message.content')
-          gh pr comment $PR_NUMBER --repo $REPO --body "$COMMENT"
+
+          echo "$RESPONSE" | jq -r '.choices[0].message.content' > review.json
+
+          cat review.json | jq -c '.comments[]' | while read -r comment; do
+            PATH_FILE=$(echo "$comment" | jq -r '.path')
+            LINE=$(echo "$comment" | jq -r '.line')
+            BODY=$(echo "$comment" | jq -r '.body')
+
+            gh api \
+              --method POST \
+              /repos/$REPO/pulls/$PR_NUMBER/comments \
+              -f body="$BODY" \
+              -f commit_id="$COMMIT_SHA" \
+              -f path="$PATH_FILE" \
+              -F line="$LINE" \
+              -f side="RIGHT"
+          done
