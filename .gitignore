@@ -1,0 +1,24 @@
+.DS_Store
+
+# Binaries
+/prompt-control-go
+/bin/
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.coverprofile
+coverage.out
+
+# Local environment
+.env
+.env.*
+
+# IDE / editor
+.idea/
+.vscode/
