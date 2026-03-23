@@ -83,6 +83,15 @@ func sendRequest(request any, url string) *http.Response {
 	return resp
 }
 
+func readDataSet(resp *http.Response) string {
+	data, err := io.ReadAll(resp.Body)
+  	if err != nil {
+  		return ""
+  	}
+
+	return string(data)
+}
+
 func readData(resp *http.Response) string {
 	data, err := io.ReadAll(resp.Body)
   	if err != nil {
