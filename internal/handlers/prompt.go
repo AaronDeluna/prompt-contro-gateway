@@ -1,4 +1,4 @@
-package prompt
+package handlers
 
 import (
 	"encoding/json"

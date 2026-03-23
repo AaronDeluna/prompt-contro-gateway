@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 	"prompt-control-go/internal/db"
-	"prompt-control-go/internal/handlers/prompt"
+	"prompt-control-go/internal/handlers"
 	"prompt-control-go/internal/services"
 
 	"github.com/go-chi/chi"
@@ -17,7 +17,7 @@ const (
 func main() {
 	initDb()
 
-	promptHandler := &prompt.PromptHandler{}
+	promptHandler := &handlers.PromptHandler{}
 
 	r := chi.NewRouter()
 	r.Route("/prompts", func(r chi.Router) {
