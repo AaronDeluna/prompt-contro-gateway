@@ -6,8 +6,10 @@ import (
 	"prompt-control-go/internal/db"
 	"prompt-control-go/internal/handlers"
 	"prompt-control-go/internal/services"
+	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 )
 
 const (
@@ -20,6 +22,11 @@ func main() {
 	promptHandler := &handlers.PromptHandler{}
 
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Timeout(30 * time.Second))
+
 	r.Route("/prompts", func(r chi.Router) {
 		r.Post("/generate/{query}", promptHandler.Generate)
 		r.Post("/refine/{query}", promptHandler.Refine)
